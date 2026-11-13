@@ -838,6 +838,9 @@
 <style>
 /* ===== Sinnes-Parcours: App-Bausteine im Hausstil des Medienpakets ===== */
 html{font-size:clamp(15px,min(1.22vw,2.25vh),22px)}
+/* iPad hoch: dort begrenzt die Breite, die Grundschrift blieb bei 15 px und Aufgaben- und Sprinter-Bildschirme waren zur
+   Hälfte leer (Prüfung Technik 13.11., S2 und S4). 810 px breit -> 17,4 px, iPad Pro 11 -> 17,9 px. */
+@media (orientation:portrait) and (min-width:700px){html{font-size:clamp(16px,min(2.15vw,1.65vh),22px)}}
 :root{
   /* Grund fuer Filo in Kreisen: warmer Holzton aus dem Parcours-Raum (keine Figur auf Weiss) */
   --m-medaillon: radial-gradient(circle at 50% 30%, #fffdf6 0%, #f4ecdc 38%, #e5d3b4 70%, #d1b88f 100%);
