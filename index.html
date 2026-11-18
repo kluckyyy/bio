@@ -24,6 +24,13 @@
   bisherigen App behalten ihren Wortlaut und damit ihren Schluessel. window.PRUEF ist der Vertrag fuer das Gate
   scripts/check-stationen-digital.mjs, window.PRUEF.forscherbuch der Zusatz fuer Dateien mit data-format="forscherbuch".
   Export: python scripts/digital/baue_export_digital.py (Bilder base64, Medienpaket eingebettet, Gate am Ende).
+  Durchklick-Sperre (Rückmeldung 17.11.2026 abends: „dass man nicht sich einfach durchklicken kann, ohne denn Sinn verstanden zu
+  haben“): kein Knopf „Loesung zeigen“; eine falsche Wahl zeigt den naechsten Tipp, wird grau und gesperrt, die uebrigen sind fuer
+  die Lesezeit des Tipps gesperrt; Eintrag, Abzeichen und Fortschritt erst nach der richtigen Antwort; „Weiter“ auf Lese-
+  Bildschirmen erst nach drei Vierteln der Lesezeit, auf Film-Bildschirmen erst nach dem Film, Ueberspringen erst beim Wiederholen.
+  Vor und zurueck (Rückmeldung 17.11.2026 abends: „man muss vor und zurück gehen können und das muss sichtbar sein“): ab Schritt 2
+  ein grosser Knopf „Zurueck“; beim Nachschauen bleibt alles stehen und „Weiter“ fuehrt ohne Wartezeit bis zum weitesten
+  Schritt; Seiten im Forscherbuch zum Blaettern.
 -->
 <style>
 /* =====================================================================
@@ -907,6 +914,9 @@ body.kann-vorlesen .nurvorlesen{display:inline-flex!important}
 .fuss .rechts{padding-bottom:.25rem;margin-left:auto}
 .fuss .links:empty{display:none}
 @media (max-width:1000px){.fuss .m-sprechblase{max-width:15rem}}
+/* Querformat und PC: mit „Zurueck“ stehen drei bis vier Knoepfe neben Filo; Filos Blase wird schmaler, statt die Knoepfe in eine
+   zweite Reihe zu schieben (1920 x 1080: der Fuss war sonst 213 statt 111 px hoch und deckte „Animation ansehen“ ab) */
+@media (min-width:1001px){.fuss{flex-wrap:nowrap}.fuss .knoepfe{flex:0 0 auto}}
 .vorleseknopf{display:inline-flex;align-items:center;gap:.35rem;border:0;border-radius:99px;background:var(--m-lila-hell);color:var(--m-lila);font:800 .9rem/1 var(--m-schrift);padding:0 .9rem;min-height:44px;min-width:44px;vertical-align:middle;margin-left:.4rem}
 .inhalt b{color:var(--m-lila)}
 .leise{color:var(--m-text);font-size:max(16px,.95rem);font-weight:700}
@@ -1029,6 +1039,19 @@ img.figur{display:block;max-width:100%;object-fit:contain;filter:drop-shadow(0 1
 .tipps .m-ico{color:var(--m-orange-dunkel);margin-top:.1em}
 .rueck{min-height:1.5rem;font-weight:800;font-size:1.08rem;margin-top:.45rem}
 .rueck.ok{color:var(--m-gruen-dunkel)} .rueck.falsch{color:var(--m-orange-dunkel)} .rueck.info{color:var(--m-tuerkis-dunkel)}
+/* Durchklick-Sperre: falsche Wahl grau und gesperrt, die uebrigen warten, bis der Tipp gelesen ist (Balken laeuft ab);
+   „Weiter“ mit Balken, solange gelesen oder geschaut wird */
+.kachel.weg,.wort.weg{opacity:.4;filter:grayscale(1);text-decoration:line-through;box-shadow:inset 0 0 0 3px #ddd6e6}
+.kachel.wartet,.wort.wartet{opacity:.7}
+.lesesperre{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.lesesperre i{flex:1 1 6rem;min-width:4rem;height:.5rem;border-radius:99px;background:#f2d27a;transform-origin:left;animation:sperrBalken 5s linear forwards}
+@keyframes sperrBalken{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.m-knopf.liest{position:relative;overflow:hidden}
+.m-knopf.liest::after{content:"";position:absolute;left:0;bottom:0;height:6px;width:100%;background:var(--m-gruen);transform-origin:left;transform:scaleX(0);animation:leseBalken var(--lese-ms,4000ms) linear forwards}
+@keyframes leseBalken{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.m-knopf.liest::after,.lesesperre i{display:none}}
+/* Vor und zurueck: Zurueck so gross wie Weiter; Blaettern im Forscherbuch */
+.blaettern{display:inline-flex;gap:.5rem;flex-wrap:wrap;margin-left:auto}
 .gut{display:flex;gap:.8rem;align-items:flex-start;background:var(--m-gruen-hell);border-radius:18px;padding:.6rem 1rem;margin-top:.5rem;font-size:1.08rem;line-height:1.4;
   box-shadow:inset 0 0 0 2px #a9d3ab;animation:m-hoch-rein .4s var(--m-weich) both}
 .gut > .m-ico{width:2rem;height:2rem;color:#fff;background:var(--m-gruen);border-radius:50%;padding:.3rem;flex:none}
@@ -3018,10 +3041,68 @@ let S = neuerZustand();
 function neuerZustand(){
   /* hier: Station, an der die Gruppe gerade steht (zuletzt geoeffnet); zuletzt: Station, die sie auf das Signal verlassen hat.
      Nur der Knopf „Signal gehoert?“ setzt zuletzt; ein Blick ins Buch aendert keine der beiden (Pruefung Kind 17.11.). */
-  return { v:1, gruppe:null, start:0, phase:"start", film:false, aktSt:0, hier:0, zuletzt:0, st:{}, ts:{}, sp:{schritt:1}, spFertig:false, komplettDa:false, seite:null };
+  return { v:1, gruppe:null, start:0, phase:"start", film:false, aktSt:0, hier:0, zuletzt:0, st:{}, ts:{}, sp:{schritt:1}, spFertig:false, komplettDa:false, seite:null, gelesen:{} };
 }
 function stz(k){ if(!S.st[k]) S.st[k] = { schritt:1, teil:1, fertig:false }; return S.st[k]; }
-function ts(id){ if(!S.ts[id]) S.ts[id] = { hilfe:0, fehler:0, loesung:false }; return S.ts[id]; }
+function ts(id){ if(!S.ts[id]) S.ts[id] = { hilfe:0, fehler:0, weg:[] }; return S.ts[id]; }
+
+/* ================= DURCHKLICK-SPERRE (Rückmeldung 17.11.2026 abends) =================
+   Lesezeit wie im Lernfilm (2 s + 0,6 s je Wort, Kinderpruefung 12.11.), fuer einen ganzen Bildschirm eine Grundzeit.
+   „Weiter“ auf Lese-Bildschirmen nach drei Vierteln davon; nach einer falschen Wahl warten die uebrigen Moeglichkeiten drei
+   Viertel der Lesezeit des Tipps, mindestens 4 s und hoechstens 6 s. */
+const LESE_ANTEIL = 0.75;
+const TIPP_MIN_MS = 4000, TIPP_MAX_MS = 6000;
+/* Testschalter nur fuer das Gate: scripts/check-stationen-digital.mjs setzt window.__pruefZeitfaktor per Init-Skript vor dem
+   Laden der Seite; am Tablet gibt es keinen Weg dorthin (kein Adressparameter). Alle Lese-, Tipp- und Filmzeiten mal ZEIT,
+   Filme laufen dann ohne Stimme (sonst bestimmt die Aufnahme die Zeit). */
+const ZEIT = (function(){ const f = window.__pruefZeitfaktor; return (typeof f === "number" && f > 0 && f < 1) ? f : 1; })();
+function leseMs(texte){ return 2000 + texte.map(t => nurText(t)).join(" ").split(/\s+/).filter(Boolean).length * 600; }
+function tippSperreMs(tipp){ return Math.round(Math.min(TIPP_MAX_MS, Math.max(TIPP_MIN_MS, LESE_ANTEIL * leseMs([tipp]))) * ZEIT); }
+let LESE = null;        /* Lese- oder Film-Bildschirm: { art:"lesen"|"film", ms } (Vertrag fuer das Gate) */
+let NACHSCHAU = false;  /* Schritt vor dem weitesten erreichten (nach „Zurueck“): ohne Sperre, nichts aenderbar */
+let VERSUCHE = 0;       /* angenommene Antworten auf Fragen mit richtiger Antwort (Vertrag fuer das Gate) */
+/* „Weiter“ gesperrt mit Hinweis und Balken; liefert frei(): stellt den Knopf wieder her und gibt ihn frei */
+function weiterSperren(text, ms, ruhig){
+  const w = $("#weiter");
+  if(!w) return () => {};
+  const normal = w.innerHTML;
+  w.disabled = true; w.classList.remove("m-knopf--puls");
+  if(ms > 0){ w.classList.add("liest"); w.style.setProperty("--lese-ms", ms + "ms"); }
+  w.innerHTML = '<span class="film-gesperrt">' + esc(text) + '</span>';
+  let frei = false;
+  /* ruhig: nach der Sperre frei, aber ohne Puls (Arbeitsblatt-Schritt: gewechselt wird erst auf das Signal der Lehrkraft) */
+  return () => { if(frei) return; frei = true; if(!w.isConnected) return; w.classList.remove("liest"); w.innerHTML = normal; if(ruhig) w.disabled = false; else weiterBereit(); };
+}
+/* Lese-Bildschirm: „Weiter“ erst nach drei Vierteln der Lesezeit. Einmal ganz gelesen (S.gelesen[key]) und beim Nachschauen
+   sofort frei („Ueberspringen“ erst beim Wiederholen). */
+function leseSperre(key, texte, warteText, ruhig){
+  const ms = Math.round(LESE_ANTEIL * leseMs(texte) * ZEIT);
+  LESE = { art:"lesen", ms:ms };
+  if(NACHSCHAU || (S.gelesen && S.gelesen[key])) return;
+  const frei = weiterSperren(warteText, ms, ruhig);
+  const tm = setTimeout(() => { if(!S.gelesen) S.gelesen = {}; S.gelesen[key] = true; speichern(); frei(); }, ms);
+  aufraeumen.push(() => clearTimeout(tm));
+}
+/* Film-Bildschirm: „Weiter“ erst nach dem Film (beim ersten Ansehen); ms > 0: Bildfolge ohne Bewegung, dann gilt die Lesezeit */
+function filmSperre(gesehen, warteText, ms){
+  LESE = { art:"film", ms:ms || 0 };
+  if(gesehen || NACHSCHAU) return () => weiterBereit();
+  return weiterSperren(warteText, ms || 0);
+}
+/* Vor und zurueck: grosser Knopf „Zurueck“ links im Fuss (ab Schritt 2) */
+function zurueckSetzen(an, tun){
+  if(!an) return;
+  const l = $(".fuss .links"); if(!l) return;
+  l.insertAdjacentHTML("afterbegin", '<button class="m-knopf m-knopf--zweit m-knopf--gross" id="zurueck" data-pruef="zurueck" type="button">' + ic("zurueck") + 'Zurück</button>');
+  $("#zurueck").onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); tun(); };
+}
+/* Nachschauen: Antworten, Ergebnisse und Tipps stehen da, nichts wird zurueckgesetzt und nichts geaendert; „Weiter“ ohne
+   Wartezeit bis zum weitesten erreichten Schritt (Werkzeuge wie Lineal, Lupe und Richtungsspiel bleiben bedienbar) */
+function nachschauen(){
+  $$("#buehne .inhalt .kachel, #buehne .inhalt .wort, #buehne .inhalt .stepper button, #ergOk").forEach(b => { if(!b.closest(".seiten")) b.disabled = true; });
+  ["#nochDose", "#tippKnopf"].forEach(sel => { const k = $(sel); if(k) k.classList.add("versteckt"); });
+  weiterBereit();
+}
 function speichern(){ try{ localStorage.setItem(SPEICHER, JSON.stringify(S)); }catch(e){ /* ohne Speicher weiter */ } }
 function laden(){ try{ const r = localStorage.getItem(SPEICHER); if(!r) return null; const o = JSON.parse(r); return (o && o.v === 1) ? o : null; }catch(e){ return null; } }
 function loeschen(){ try{ localStorage.removeItem(SPEICHER); }catch(e){ /* egal */ } }
@@ -3046,7 +3127,7 @@ function st(nr){ return STATIONEN[nr - 1]; }
 function organBild(k){ const o = ORGANE.filter(x => x.k === k)[0]; return o ? IMG[o.bild] : ""; }
 let aufraeumen = [];
 let AKTION = null;           /* naechste richtige Aktion fuer das Gate (window.PRUEF) */
-function raeumeAuf(){ aufraeumen.forEach(f => { try{ f(); }catch(e){} }); aufraeumen = []; stopSprechen(); AKTION = null; }
+function raeumeAuf(){ aufraeumen.forEach(f => { try{ f(); }catch(e){} }); aufraeumen = []; stopSprechen(); AKTION = null; LESE = null; NACHSCHAU = false; }
 function klick(sel){ return { art:"klick", sel:sel }; }
 
 /* Klang und Stimme ueber das Medienpaket (Aufnahmen kommen spaeter ueber window.STIMME_CLIPS) */
@@ -3109,20 +3190,57 @@ function raumHTML(inhalt, extraKlasse){
   return '<div class="raum ' + (extraKlasse || '') + '"><img class="raum-grund" src="' + IMG.raum + '" alt="">' + inhalt + '</div>';
 }
 
-/* Gestaffelte Hilfen: falsch zaehlt einen Versuch und gibt einen Tipp mehr; Loesung erst nach einer Hilfe und zwei Versuchen.
-   Nur Tipps ohne Versuch geben nie die Loesung (Auftrag; Pruefungen Kind, Inhalt, Technik 13.11.: "|| hilfe >= 3" ist raus). */
+/* Gestaffelte Hilfen ohne Loesung (Durchklick-Sperre, Rückmeldung 17.11.2026 abends; vorher kam „Loesung zeigen“ nach einer Hilfe und
+   zwei Versuchen). Eine falsche Wahl zaehlt einen Versuch, zeigt den naechsten Tipp und wird grau und gesperrt; die uebrigen
+   Moeglichkeiten warten, bis der Tipp gelesen ist („Lest den Tipp …“). Weil jede falsche Wahl wegfaellt, bleibt keine Gruppe
+   stecken; die Frage bleibt offen bis zur richtigen Antwort. Tipps nennen nie die Loesung.
+   refs: tipps (Kasten), tipp (Knopf „Tipp“), rueck (Rueckmeldung), geloest(), optionen() -> Knoepfe, wert(knopf) -> Wert,
+   teil() -> Nummer der Teilaufgabe (Karte, Luecke, Platz), fuer die die grauen Moeglichkeiten gelten. */
 function hilfeRahmen(id, tipps, refs){
   const t = ts(id);
-  const box = refs.tipps, loes = refs.loesung, tippKnopf = refs.tipp;
+  if(!Array.isArray(t.weg)) t.weg = [];
+  const teil = () => refs.teil ? refs.teil() : 0;
+  const box = refs.tipps, tippKnopf = refs.tipp, rueck = refs.rueck;
+  let sperrTimer = null;
+  /* neue Teilaufgabe: graue Moeglichkeiten gelten nicht mehr; eine geloeste Frage bleibt beim Nachschauen unveraendert */
+  function teilPruefen(){ if(!refs.geloest() && t.wegFuer !== teil()){ t.weg = []; t.wegFuer = teil(); } }
+  function grau(){
+    if(!refs.optionen) return;
+    refs.optionen().forEach(b => {
+      const aus = !refs.geloest() && t.weg.indexOf(refs.wert(b)) >= 0;
+      if(aus){ b.classList.add("weg"); b.disabled = true; b.setAttribute("aria-disabled", "true"); }
+      else if(b.classList.contains("weg")){ b.classList.remove("weg"); b.disabled = false; b.removeAttribute("aria-disabled"); }
+    });
+  }
   function zeigen(){
     if(t.hilfe > 0 && box){ box.classList.remove("versteckt"); box.innerHTML = tipps.slice(0, t.hilfe).map((x, n) => '<div>' + ic("tipp") + '<span><b>Tipp ' + (n + 1) + ':</b> ' + esc(x) + '</span></div>').join(""); }
-    if(loes) loes.classList.toggle("versteckt", !(t.fehler >= 2 && t.hilfe >= 1 && !refs.geloest()));
     if(tippKnopf) tippKnopf.classList.toggle("versteckt", t.hilfe >= tipps.length || refs.geloest());
+    grau();
   }
   if(tippKnopf) tippKnopf.onclick = (ev) => { if(ev && ev.detail > 1) return; if(t.hilfe < tipps.length) t.hilfe++; klang("klick"); zeigen(); speichern(); };
+  teilPruefen();
   zeigen();
   return {
-    falsch(){ t.fehler++; if(t.hilfe < tipps.length) t.hilfe++; zeigen(); speichern(); },
+    falsch(b, wert){
+      teilPruefen();
+      t.fehler++; VERSUCHE++;
+      if(t.hilfe < tipps.length) t.hilfe++;
+      if(t.weg.indexOf(wert) < 0) t.weg.push(wert);
+      zeigen(); speichern();
+      const ms = tippSperreMs(tipps[Math.max(0, Math.min(t.hilfe, tipps.length) - 1)] || "");
+      falschSperren(ms);
+      const warten = refs.optionen ? refs.optionen().filter(x => !x.classList.contains("weg")) : [];
+      warten.forEach(x => x.classList.add("wartet"));
+      if(rueck){ rueck.className = "rueck falsch"; rueck.innerHTML = '<span class="lesesperre" data-lesesperre="1">' + ic("tipp") + '<span>Lest den Tipp …</span><i style="animation-duration:' + ms + 'ms"></i></span>'; }
+      clearTimeout(sperrTimer);
+      sperrTimer = setTimeout(() => {
+        warten.forEach(x => x.classList.remove("wartet"));
+        if(rueck && !refs.geloest() && rueck.querySelector("[data-lesesperre]")){ rueck.className = "rueck falsch"; rueck.textContent = "Jetzt versucht es nochmal."; }
+      }, ms);
+      aufraeumen.push(() => clearTimeout(sperrTimer));
+    },
+    /* richtige (Teil-)Antwort: die grauen Moeglichkeiten gelten fuer die naechste Teilaufgabe nicht mehr */
+    richtig(){ VERSUCHE++; t.weg = []; t.wegFuer = teil(); zeigen(); speichern(); },
     zeigen: zeigen,
     stand: t
   };
@@ -3166,12 +3284,12 @@ function hud(){
    Knopf an derselben Stelle des neuen Bildschirms und ueberspringt ihn (Pruefung Kind 13.11., im Tablet-Browser gemessen). */
 const SPERRE_MS = 500;
 let SPERRE = 0, WECHSEL = 0;
-/* Sperre nach einer falschen Antwort: 600 ms lang keine weitere Antwort. Ein Doppeltipp auf eine falsche Kachel zaehlte auf dem
-   Tablet als zwei Versuche, und „Loesung zeigen“ kam nach einem einzigen Doppeltipp (Pruefung Kind 17.11.). */
+/* Sperre nach einer falschen Antwort: mindestens 600 ms keine weitere Antwort (ein Doppeltipp auf eine falsche Kachel zaehlte auf
+   dem Tablet als zwei Versuche, Pruefung Kind 17.11.); mit Tipp so lange, wie man zum Lesen des Tipps braucht (Durchklick-Sperre). */
 const FALSCH_MS = 600;
 let FALSCH_BIS = 0;
 function nachFalschGesperrt(){ return Date.now() < FALSCH_BIS; }
-function falschSperren(){ FALSCH_BIS = Date.now() + FALSCH_MS; }
+function falschSperren(ms){ FALSCH_BIS = Math.max(FALSCH_BIS, Date.now() + (ms || FALSCH_MS)); }
 document.addEventListener("click", (ev) => {
   if(Date.now() >= SPERRE) return;
   const k = ev.target && ev.target.closest ? ev.target.closest("button") : null;
@@ -3254,15 +3372,17 @@ function signalWeiter(nr){
 }
 function angefangen(nr){ return !!(S.st[nr] && !S.st[nr].fertig && (S.st[nr].schritt > 1 || S.st[nr].verm != null)); }
 function seiteOeffnen(id){ S.seite = id; S.phase = "seite"; speichern(); zeige(); }
-/* Zugabe am Ende der Station: dieselbe Station noch einmal ausprobieren, die Seite bleibt entdeckt */
+/* Zugabe am Ende der Station: dieselbe Station noch einmal ausprobieren, die Seite bleibt entdeckt (ab Schritt 3 wieder zum
+   Bedienen, nicht zum Nachschauen) */
 function zugabe(nr){
   const z = stz(nr), p = z.p || (z.p = {});
-  z.schritt = 3; z.teil = 1;
+  z.schritt = 3; z.teil = 1; z.weit = 31;
   if(nr === 1){ p.oben = false; p.unten = false; p.ohne = false; }
   if(nr === 5){ p.dosen = (p.dosen || 0) + 1; p.rate = null; p.echt = null; }
   S.aktSt = nr; S.hier = nr; S.phase = "station"; speichern(); zeige();
 }
-function zumBuchKnopf(){ return '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="zumBuch" type="button">' + ic("zurueck") + 'Zum Forscherbuch</button>'; }
+/* Symbol Stern wie im Kopf des Forscherbuchs: der Pfeil gehoert jetzt zu „Zurueck“ */
+function zumBuchKnopf(){ return '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="zumBuch" type="button">' + ic("stern") + 'Zum Forscherbuch</button>'; }
 function zumBuchBinden(){ const zb = $("#zumBuch"); if(zb) zb.onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); geheZu("buch"); }; }
 
 /* ---------- Gruppenstart (antippen, keine Tastatur) ---------- */
@@ -3334,6 +3454,7 @@ function zeigeRollen(){
     '<div class="rollen m-staffel">' + ROLLEN.map((r, i) => '<div class="rolle" style="--m-i:' + i + '"><span class="rollenbild">' + ic(r.icon) + '</span><div><h3>' + esc(r.t) + '</h3><p>' + esc(r.s) + '</p></div></div>').join("") + '</div>' +
     '<div class="wechselband">' + ic("nochmal") + '<span>' + esc(ROLLEN_WECHSEL) + '</span></div>' + fuenfBild("nurhoch") + '</div>' +
     fussHTML(FILO.rollen, '', "Zum Lernfilm", true) + '</section>';
+  leseSperre("rollen", ["So forscht eure Gruppe"].concat(ROLLEN.map(r => r.t + ": " + r.s)).concat([ROLLEN_WECHSEL]), "Lest die Rollen …");
   $("#weiter").onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); geheZu("film"); };
   AKTION = () => klick("#weiter");
   vertonen(["So forscht eure Gruppe"].concat(ROLLEN.map(r => r.t + ": " + r.s)).concat([ROLLEN_WECHSEL, FILO.rollen]));
@@ -3351,6 +3472,7 @@ function lehrerHTML(){
   '<li>Gruppenstart am Tablet: Tier antippen (Gruppenname), Starttisch antippen. Dann die Rollen und der kurze Lernfilm (Raum, fünf Sinne, Regeln).</li>' +
   '<li>Rollen, die an jeder Station wechseln: Tablet-Halter:in (tippt), Vorleser:in (liest die Stationskarte vor), Forscher:innen (machen das Experiment). Die App sagt an jeder Station „Gebt das Tablet nach links weiter“; das Kind daneben liest vor.</li>' +
   '<li>Je Station sieben Schritte: Stationskarte → Vermuten → Experiment → Ergebnis eintragen (mit „ausgetrickst?“ und Sinnesorgan) → Animation „So funktioniert es“ → die Seite im Forscherbuch ist entdeckt → ins Arbeitsblatt eintragen, auf das Signal warten.</li>' +
+  '<li>Durchklicken geht nicht: Es gibt keinen Lösungsknopf. Nach einer falschen Wahl kommt der nächste Tipp, die Wahl wird grau, und die Gruppe liest den Tipp einige Sekunden, bevor sie wieder wählen kann. „Weiter“ wird auf Lese-Bildschirmen erst nach der Lesezeit frei und bei Animationen erst nach dem Ende. Mit „Zurück“ schaut die Gruppe frühere Schritte nach, ohne Wartezeit und ohne dass etwas verloren geht; im Forscherbuch blättert sie zwischen den Seiten.</li>' +
   '<li>Wechsel auf Ihr Signal in Laufrichtung 1 → 5: Die Gruppe tippt „Signal gehört? Zur Station …“ (im letzten Schritt der Station oder im Forscherbuch). Erst dieser Knopf schickt sie weiter; ein Blick ins Forscherbuch ändert die Station nicht. Signal, aber nicht fertig: Die Station steht im Forscherbuch als „angefangen“. Ein Tisch besetzt: Im Forscherbuch frei wählen.</li>' +
   '<li>Alle fünf Seiten: „Forscherbuch komplett“, Filo beantwortet die Stundenfrage. Schnelle Gruppen: Profi-Seite (Zwei-Punkt-Probe).</li>' +
   '<li>Danach am Platz: Arbeitsblatt fertig machen, die Selbstkontrolle liegt aus. Sichern: Jede Station erklären (Organ, was gemerkt), Filos Frage beantworten, Vermutungen prüfen. Ausblick: das Auge.</li></ul>' +
@@ -3423,7 +3545,10 @@ function zeigeFilm(){
     '</div><p>' + esc(ROLLEN_WECHSEL) + '</p></div></section>';
   let weg = false;
   const zumBuch = () => { if(weg) return; weg = true; geheZu("buch"); };
+  /* Testschalter (nur Gate): Film schneller und ohne Stimme, die Einstellung der Gruppe bleibt */
+  if(ZEIT < 1){ const vorher = M.einstellungen.vorlesen; M.einstellungen.vorlesen = false; aufraeumen.push(() => { M.einstellungen.vorlesen = vorher; }); }
   const film = M.film($("#filmPlatz"), {
+    lesetempo:1 / ZEIT,
     titel:"So läuft der Parcours",
     sprecher:{ name:"Filo", bild:IMG.filo },
     szenen:filmSzenen(),
@@ -3435,6 +3560,11 @@ function zeigeFilm(){
   });
   aufraeumen.push(() => { try{ film.zerstoeren(); }catch(e){} });
   const kw = film.el.querySelector('[data-m="weiter"]');
+  /* „Ueberspringen“ erst nach dem ersten ganzen Ansehen (Durchklick-Sperre): der Film nennt die Regeln (nichts essen, nur kurz
+     schnuppern); beim Wiederholen ist „Zum Forscherbuch“ gleich frei */
+  const springen = film.el.querySelector('[data-m="ueberspringen"]');
+  if(springen && !S.film) springen.classList.add("versteckt");
+  LESE = S.film ? null : { art:"film", ms:0 };
   if(kw){
     if(S.film){ kw.disabled = false; kw.title = ""; kw.addEventListener("click", () => { klang("klick"); zumBuch(); }); }
     else {
@@ -3446,10 +3576,9 @@ function zeigeFilm(){
     }
   }
   AKTION = () => {
-    const d = $(".m-film-dialog");
-    if(d && !d.hidden) return klick('[data-m="ueberspringen-ja"]');
     if(S.film) return klick('[data-m="weiter"]');
-    return klick('[data-m="ueberspringen"]');
+    if(!film.laeuft && !film.gesehen) return klick('[data-m="spielen"]');
+    return { art:"warte" };
   };
 }
 
@@ -3510,7 +3639,15 @@ function stationKopf(s, z){
   const teile = s.probieren.teile;
   return '<div class="m-karte-kopf"><span class="m-chip"><img src="' + IMG[s.icon] + '" alt="">Station ' + s.nr + ' · ' + s.sinn + '</span>' +
     '<span class="m-chip m-chip--tuerkis">' + SCHRITT_NAME[z.schritt] + '</span>' +
-    '<span class="m-schritt">Schritt ' + z.schritt + ' von ' + SCHRITTE + (z.schritt === 3 && teile > 1 ? ' · Teil ' + z.teil + ' von ' + teile : '') + '</span></div>';
+    '<span class="m-schritt">Schritt ' + z.schritt + ' von ' + SCHRITTE + (z.schritt === 3 && teile > 1 ? ' · Teil ' + z.teil + ' von ' + teile : '') + (NACHSCHAU ? ' · Nachschauen' : '') + '</span></div>';
+}
+/* Schritt und Teil als eine Zahl (Schritt 3 Teil 2 = 32): z.weit ist der weiteste erreichte Schritt der Station */
+function schrittNr(z){ return z.schritt * 10 + (z.teil || 1); }
+function schrittZurueck(z){
+  const s = st(S.aktSt);
+  if(z.schritt === 3 && z.teil > 1) z.teil--;
+  else if(z.schritt > 1){ z.schritt--; z.teil = z.schritt === 3 ? s.probieren.teile : 1; }
+  speichern(); zeige();
 }
 /* Texte je Station und Schritt (dieselben Saetze fuer Bildschirm und Stimme) */
 function stationTexte(nr, schritt, teil){
@@ -3530,10 +3667,14 @@ function stationTexte(nr, schritt, teil){
 function zeigeStation(){
   const nr = S.aktSt, s = st(nr), z = stz(nr);
   besucht("station" + nr);
+  if(!z.weit || schrittNr(z) > z.weit) z.weit = schrittNr(z);
+  NACHSCHAU = schrittNr(z) < z.weit;
   const T = stationTexte(nr, z.schritt, z.teil);
   const F = { 1:stKarte, 2:stVermuten, 3:stProbieren, 4:stEintragen, 5:stAnimation, 6:stSeite, 7:stArbeitsblatt };
   F[z.schritt](s, z, T);
   zumBuchBinden();
+  zurueckSetzen(z.schritt > 1 || z.teil > 1, () => schrittZurueck(z));
+  if(NACHSCHAU) nachschauen();
   if(z.schritt !== 5 && z.schritt !== 7) vertonen(T.erz.concat([T.filo]));
 }
 function schrittWeiter(z){
@@ -3583,6 +3724,7 @@ function stKarte(s, z, T){
     '<div class="sk-geht m-staffel"><h3 style="--m-i:3">' + ic("play") + 'So geht es</h3>' + handgriffeHTML(s.probieren.handgriffe, null) +
     '<div class="regel" style="--m-i:4">' + ic("hmm") + '<span>' + esc(t.regel) + '</span></div></div></div></div></div>' +
     fussHTML(T.filo, zumBuchKnopf(), "Los geht's", true) + '</section>';
+  leseSperre("karte" + s.nr, T.erz, "Lest die Karte …");
   $("#weiter").onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); schrittWeiter(z); };
   AKTION = () => klick("#weiter");
 }
@@ -3755,6 +3897,9 @@ function probHoeren(s, z, T){
     '<div class="medium"><h3>' + ic("klangAn") + 'Extra: Richtungsspiel</h3><div class="spiel" id="spiel"></div></div>' +
     '<div class="hinweisband" style="margin-top:.7rem">' + ic("haken") + '<span>Ihr habt den Versuch mit der Dose gemacht? Dann tippe auf Weiter.</span></div>',
     "Weiter", true);
+  /* Dosen-Versuch ohne Pflicht-Handlung: „Weiter“ erst nach der Lesezeit der Anleitung, wie Profi-Schritt 3
+     (Pruefer 18.11.2026: das Kernexperiment liess sich mit einem Tipp ueberspringen) */
+  leseSperre("probieren" + s.nr, s.probieren.handgriffe.concat(["Ihr habt den Versuch mit der Dose gemacht? Dann tippe auf Weiter."]), "Lest die Anleitung …");
   const box = $("#spiel");
   function malen(){
     const tonGeht = !!M.audioKontext();
@@ -3950,20 +4095,21 @@ function probSchmecken(s, z, T){
   }
   probRahmen(s, z, T, handgriffeHTML(s.probieren.handgriffe2, null) +
     '<div class="tipps versteckt" id="tipps" style="margin-top:.7rem"></div>' +
-    '<div class="knopfreihe"><button class="m-knopf m-knopf--zweit m-knopf--klein" id="tippKnopf" type="button">' + ic("tipp") + 'Tipp</button>' +
-    '<button class="m-knopf m-knopf--orange m-knopf--klein versteckt" id="loesung" type="button">' + ic("tipp") + 'Lösung zeigen</button></div>' + '<!--bild-->' + stationsBild(s, "nurhoch"),
+    '<div class="knopfreihe"><button class="m-knopf m-knopf--zweit m-knopf--klein" id="tippKnopf" type="button">' + ic("tipp") + 'Tipp</button></div>' + '<!--bild-->' + stationsBild(s, "nurhoch"),
     '<div id="kartenBox"></div><div class="rueck" id="rueck"></div><div id="gutbox"></div>',
     "Weiter", p.karten >= GESCHMACK_KARTEN.length, true);
   let fertig = p.karten >= GESCHMACK_KARTEN.length;
-  const hr = hilfeRahmen("s4karten", GESCHMACK_TIPPS, { tipps:$("#tipps"), loesung:$("#loesung"), tipp:$("#tippKnopf"), geloest:() => fertig });
+  let hr = null;
   const zu = zuordnung($("#kartenBox"), {
     items:GESCHMACK_KARTEN.map(k => ({ bild:k.bild, cap:k.cap, z:k.k })), ziele:GESCHMACK_SCHILDER.map(k => ({ k:k, t:k })),
     start:p.karten, merk:p, hinweis:"Tippe auf das passende Schild oder zieh die Karte hin.",
-    richtig:(el, n) => { p.karten = n; speichern(); $("#rueck").className = "rueck ok"; $("#rueck").textContent = "Richtig! " + n + " von " + GESCHMACK_KARTEN.length; if(el) filoSag($("#beg"), zufall(LOB)); },
-    falsch:(el) => { hr.falsch(); $("#rueck").className = "rueck falsch"; $("#rueck").textContent = "Passt nicht. Lies den Tipp und versuch es nochmal."; filoSag($("#beg"), zufall(HMM)); },
+    richtig:(el, n) => { p.karten = n; if(hr) hr.richtig(); speichern(); $("#rueck").className = "rueck ok"; $("#rueck").textContent = "Richtig! " + n + " von " + GESCHMACK_KARTEN.length; if(el) filoSag($("#beg"), zufall(LOB)); },
+    falsch:(el) => { hr.falsch(el, el.dataset.k); filoSag($("#beg"), zufall(HMM)); },
     fertig:() => { fertig = true; hr.zeigen(); $("#rueck").textContent = ""; $("#gutbox").innerHTML = '<div class="gut">' + ic("haken") + '<div><span class="gutkopf">Alle vier Karten liegen richtig!</span>Du kennst jetzt süß, sauer, salzig und bitter.</div></div>'; filoSag($("#beg"), zufall(LOB)); weiterBereit(); }
   });
-  $("#loesung").onclick = () => { if(fertig) return; ts("s4karten").loesung = true; zu.zeigeLoesung(); };
+  /* die grauen Schilder gelten fuer die Karte, die gerade dran ist */
+  hr = hilfeRahmen("s4karten", GESCHMACK_TIPPS, { tipps:$("#tipps"), tipp:$("#tippKnopf"), rueck:$("#rueck"), geloest:() => fertig,
+    optionen:() => $$("#kartenBox .ziel"), wert:b => b.dataset.k, teil:() => zu.akt });
   AKTION = () => fertig ? klick("#weiter") : klick(zu.richtigesZiel());
 }
 
@@ -4033,7 +4179,8 @@ function stEintragen(s, z, T){
   buehne.innerHTML = '<section class="karte m-karte">' + stationKopf(s, z) +
     '<div class="inhalt"><h2 class="m-frage">Eintragen' + vorleseKnopf() + '</h2>' +
     '<div class="blockreihe">' +
-      '<div class="block' + (z.erg != null ? ' erledigt' : '') + '" id="blErg"><div class="teilkopf"><b>1</b>' + esc(e.frage) + '</div>' + ergHTML + '<div class="rueck" id="ergRueck"></div></div>' +
+      '<div class="block' + (z.erg != null ? ' erledigt' : '') + '" id="blErg"><div class="teilkopf"><b>1</b>' + esc(e.frage) + '</div>' + ergHTML +
+        (e.richtig ? '<div class="tipps versteckt" id="ergTipps" style="margin-top:.6rem"></div>' : '') + '<div class="rueck" id="ergRueck"></div></div>' +
       '<div class="block trickfrage' + (z.erg != null ? '' : ' aus') + (z.trick ? ' erledigt' : '') + '" id="blTrick"><div class="teilkopf"><b>2</b>' + esc(TRICK_FRAGE) + '</div>' +
         '<p class="vermerk trickmass">' + esc(TRICK_MASS) + '</p><p class="vermerk" id="trickVermerk"></p><div class="wahl" id="trickWahl">' + TRICK_WAHL.map(w => '<button class="kachel' + (z.trick === w ? ' gewaehlt' : '') + '" type="button" data-trick="' + w + '">' + w + '</button>').join("") + '</div></div>' +
     '</div>' +
@@ -4041,8 +4188,7 @@ function stEintragen(s, z, T){
     '<div class="tipps versteckt" id="tipps"></div>' +
     '<div class="wahl organe" id="organWahl">' + ORGAN_FOLGE.map(k => '<button class="kachel' + (z.fertig && k === s.organ ? ' richtig' : '') + '" type="button" data-organ="' + k + '">' + k + '</button>').join("") + '</div>' +
     '<div class="rueck" id="organRueck"></div><div id="gutbox"></div></div>' + bild + '</div>' +
-    fussHTML(T.filo, zumBuchKnopf() + '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="tippKnopf" type="button">' + ic("tipp") + 'Tipp</button>' +
-      '<button class="m-knopf m-knopf--orange m-knopf--klein versteckt" id="loesung" type="button">' + ic("tipp") + 'Lösung zeigen</button>', "Weiter", !!z.fertig) + '</section>';
+    fussHTML(T.filo, zumBuchKnopf() + '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="tippKnopf" type="button">' + ic("tipp") + 'Tipp</button>', "Weiter", !!z.fertig) + '</section>';
   let ergHr = null, organGeloest = !!z.fertig;
   const ergRichtig = e.richtig;
   function vermerk(){
@@ -4064,23 +4210,21 @@ function stEintragen(s, z, T){
     $$("#ergPaare .kachel").forEach(b => b.onclick = () => { z.eigE[+b.dataset.p] = b.dataset.w; speichern(); klang("klick"); $$('#ergPaare .kachel[data-p="' + b.dataset.p + '"]').forEach(x => x.classList.toggle("gewaehlt", x === b)); });
     $("#ergOk").onclick = () => { if(z.eigE.indexOf(null) >= 0){ $("#ergRueck").className = "rueck falsch"; $("#ergRueck").textContent = "Tippe in jeder Reihe ein Wort an."; return; } ergFertig(z.eigE.join(", "), $("#ergOk")); };
   } else {
-    if(ergRichtig) ergHr = hilfeRahmen("s" + s.nr + "erg", e.tipps, { tipps:null, loesung:null, tipp:null, geloest:() => z.erg != null });
+    /* Frage mit richtiger Antwort (Station 1 und 4): falsche Wahl grau, Tipp im Kasten darueber, keine Loesung zum Antippen */
+    if(ergRichtig) ergHr = hilfeRahmen("s" + s.nr + "erg", e.tipps, { tipps:$("#ergTipps"), tipp:null, rueck:$("#ergRueck"), geloest:() => z.erg != null,
+      optionen:() => $$("#ergWahl .kachel"), wert:b => b.getAttribute("data-erg") });
     $$("#ergWahl .kachel").forEach(b => b.onclick = (ev) => {
       if(z.erg != null && ergRichtig) return;
       if(ev && ev.detail > 1) return;
-      if(nachFalschGesperrt()) return;
+      if(nachFalschGesperrt() || b.disabled) return;
       const w = b.getAttribute("data-erg");
       if(ergRichtig && w !== ergRichtig){
-        falschSperren();
-        b.classList.add("falsch"); M.falsch(b); marke(b, "Noch nicht", "falsch"); ergHr.falsch();
-        const t = ts("s" + s.nr + "erg");
-        $("#ergRueck").className = "rueck falsch";
-        $("#ergRueck").innerHTML = ic("tipp") + ' ' + esc(e.tipps[Math.min(t.hilfe, e.tipps.length) - 1]) + (t.fehler >= 2 ? ' <button class="m-knopf m-knopf--orange m-knopf--klein" id="ergLoesung" type="button">Lösung zeigen</button>' : '');
-        const el = $("#ergLoesung"); if(el) el.onclick = () => { t.loesung = true; const rb = $('#ergWahl .kachel[data-erg="' + ergRichtig + '"]'); rb.classList.add("richtig"); ergFertig(ergRichtig, rb); };
+        b.classList.add("falsch"); M.falsch(b); marke(b, "Noch nicht", "falsch"); ergHr.falsch(b, w);
         filoSag($("#beg"), zufall(HMM));
         setTimeout(() => b.classList.remove("falsch"), 900);
         return;
       }
+      if(ergHr) ergHr.richtig();
       $$("#ergWahl .kachel").forEach(x => x.classList.toggle(ergRichtig ? "richtig" : "gewaehlt", x === b));
       ergFertig(w, b);
     });
@@ -4095,24 +4239,25 @@ function stEintragen(s, z, T){
     hrOrgan.zeigen(); insBild("#blOrgan");
   });
   /* Teil 3: Sinnesorgan */
-  const hrOrgan = hilfeRahmen("s" + s.nr + "organ", ORGAN_TIPPS[s.nr], { tipps:$("#tipps"), loesung:$("#loesung"), tipp:$("#tippKnopf"), geloest:() => organGeloest || !z.trick });
+  const hrOrgan = hilfeRahmen("s" + s.nr + "organ", ORGAN_TIPPS[s.nr], { tipps:$("#tipps"), tipp:$("#tippKnopf"), rueck:$("#organRueck"), geloest:() => organGeloest || !z.trick,
+    optionen:() => $$("#organWahl .kachel"), wert:b => b.dataset.organ });
+  /* die Seite ist erst nach der richtigen Antwort entdeckt (Eintrag, Abzeichen, Fortschritt) */
   function entdecken(){
     if(z.fertig){ return; }
     organGeloest = true; z.fertig = true; speichern(); hud(); hrOrgan.zeigen();
     $("#blOrgan").classList.add("erledigt");
     $("#organRueck").className = "rueck"; $("#organRueck").textContent = "";
-    $("#gutbox").innerHTML = '<div class="gut">' + ic("haken") + '<div><span class="gutkopf">' + (ts("s" + s.nr + "organ").loesung ? 'So ist es richtig. Merk es dir!' : 'Richtig!') + '</span>Station ' + s.nr + ' ' + s.sinn + ': Sinnesorgan ' + s.organ + '. Gleich seht ihr, wie es funktioniert.</div></div>';
+    $("#gutbox").innerHTML = '<div class="gut">' + ic("haken") + '<div><span class="gutkopf">Richtig!</span>Station ' + s.nr + ' ' + s.sinn + ': Sinnesorgan ' + s.organ + '. Gleich seht ihr, wie es funktioniert.</div></div>';
     filoSag($("#beg"), zufall(LOB));
     weiterBereit();
   }
   $$("#organWahl .kachel").forEach(b => b.onclick = (ev) => {
     if(organGeloest || !z.trick) return;
     if(ev && ev.detail > 1) return;
-    if(nachFalschGesperrt()) return;
-    if(b.dataset.organ === s.organ){ b.classList.add("richtig"); M.richtig(b); marke(b, "Richtig!", "ok"); entdecken(); }
-    else { falschSperren(); b.classList.add("falsch"); M.falsch(b); marke(b, "Noch nicht", "falsch"); hrOrgan.falsch(); $("#organRueck").className = "rueck falsch"; $("#organRueck").textContent = "Lies den Tipp und versuch es nochmal."; filoSag($("#beg"), zufall(HMM)); setTimeout(() => b.classList.remove("falsch"), 900); }
+    if(nachFalschGesperrt() || b.disabled) return;
+    if(b.dataset.organ === s.organ){ hrOrgan.richtig(); b.classList.add("richtig"); M.richtig(b); marke(b, "Richtig!", "ok"); entdecken(); }
+    else { b.classList.add("falsch"); M.falsch(b); marke(b, "Noch nicht", "falsch"); hrOrgan.falsch(b, b.dataset.organ); filoSag($("#beg"), zufall(HMM)); setTimeout(() => b.classList.remove("falsch"), 900); }
   });
-  $("#loesung").onclick = () => { if(organGeloest) return; ts("s" + s.nr + "organ").loesung = true; const rb = $('#organWahl .kachel[data-organ="' + s.organ + '"]'); rb.classList.add("richtig"); entdecken(); };
   $("#weiter").onclick = (ev) => { if(ev && ev.detail > 1) return; if(!z.fertig) return; klang("klick"); schrittWeiter(z); };
   if(z.erg != null){ $("#ergRueck").textContent = "Eingetragen: " + z.erg; vermerk(); }
   AKTION = () => {
@@ -4132,16 +4277,13 @@ function stAnimation(s, z, T){
   besucht("animation" + s.nr);
   buehne.innerHTML = '<section class="karte m-karte">' + stationKopf(s, z) +
     '<div class="inhalt"><h2 class="m-frage">So funktioniert es: ' + s.sinn + '</h2><div class="trickplatz" id="trickPlatz"></div></div>' +
-    fussHTML(null, zumBuchKnopf() + '<button class="m-knopf m-knopf--zweit m-knopf--klein' + (z.animGesehen ? ' versteckt' : '') + '" id="tfSkip" type="button">' + ic("springen") + 'Überspringen</button>', "Weiter", !!z.animGesehen) + '</section>';
-  const gesehen = () => { z.animGesehen = true; speichern(); weiterBereit(); const k = $("#tfSkip"); if(k) k.classList.add("versteckt"); };
-  const tf = trickfilm($("#trickPlatz"), String(s.nr), { autostart:true, onEnde:gesehen });
+    fussHTML(null, zumBuchKnopf(), "Weiter", !!z.animGesehen) + '</section>';
+  /* kein „Ueberspringen“ beim ersten Ansehen (Durchklick-Sperre): „Weiter“ erst am Ende; einmal gesehen, ist „Weiter“ gleich frei */
+  const id = String(s.nr), bf = BILDFOLGE();
+  const frei = filmSperre(!!z.animGesehen, bf ? "Lest die Bilder …" : "Seht die Animation an …", bf ? bildfolgeMs(id) : 0);
+  const gesehen = () => { z.animGesehen = true; speichern(); frei(); };
+  const tf = trickfilm($("#trickPlatz"), id, { autostart:true, onEnde:gesehen });
   aufraeumen.push(() => tf.stopp());
-  let offen = false;
-  $("#tfSkip").onclick = (ev) => {
-    if(ev && ev.detail > 1) return; if(offen) return; offen = true;
-    frageDialog({ titel:"Animation überspringen?", text:"Filo zeigt euch, wie es funktioniert. Wirklich weiter?", nein:"Nein, ansehen", ja:"Ja, überspringen" })
-      .then(ja => { offen = false; if(ja){ tf.stopp(); gesehen(); } });
-  };
   let weg = false;
   $("#weiter").onclick = (ev) => {
     if(ev && ev.detail > 1) return; if(!z.animGesehen || weg) return; weg = true; klang("klick"); tf.stopp();
@@ -4149,7 +4291,7 @@ function stAnimation(s, z, T){
     M.abzeichen({ ueber:"Neue Seite entdeckt!", bild:IMG[s.icon], titel:"Seite " + s.nr + ": " + s.sinn, text:"Euer **Forscherbuch** hat eine neue Seite.", knopf:"Seite ansehen" })
       .then(() => { z.seiteGezeigt = true; schrittWeiter(z); });
   };
-  AKTION = () => { if($(".dlg")) return klick('.dlg [data-a="ja"]'); if(!z.animGesehen) return klick("#tfSkip"); return klick("#weiter"); };
+  AKTION = () => z.animGesehen ? klick("#weiter") : { art:"warte" };
 }
 
 /* Seite im Forscherbuch: Sinn, Sinnesorgan, Bild, Unser Ergebnis, So funktioniert es, Fuer dein Arbeitsblatt */
@@ -4206,6 +4348,7 @@ function stSeite(s, z, T){
   buehne.innerHTML = '<section class="karte m-karte">' + stationKopf(s, z) +
     '<div class="inhalt"><h2 class="m-frage">Seite ' + s.nr + ' entdeckt: ' + s.sinn + vorleseKnopf() + '</h2>' + seiteHTML(s.nr) + '</div>' +
     fussHTML(T.filo, zumBuchKnopf(), "Ins Arbeitsblatt", true) + '</section>';
+  leseSperre("seite" + s.nr, T.erz, "Lest die Seite …");
   seiteBinden(s.nr);
   $("#weiter").onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); schrittWeiter(z); };
   AKTION = () => klick("#weiter");
@@ -4234,6 +4377,10 @@ function stArbeitsblatt(s, z, T){
   $("#weiter").onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); if(alle) geheZu("komplett"); else signalWeiter(s.nr); };
   const zk = $("#zugabe"); if(zk) zk.onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); zugabe(s.nr); };
   AKTION = () => klick("#weiter");
+  /* Eintrag ins Arbeitsblatt nicht wegtippen (Gate 18.11.2026: „Weiter“ wirkte nach 0,4 s): Lesezeit von Auftrag und Zeile,
+     danach bleibt der Knopf ruhig, bis das Signal kommt */
+  leseSperre("arbeitsblatt" + s.nr, ["Tragt jetzt in euer Arbeitsblatt ein:", AB_FELD + ", Zeile " + s.nr + " · " + s.sinn + ". Jedes Kind schreibt in sein Blatt.",
+    AB_SPALTEN.join(" ") + " " + s.sinn + " " + s.organ + " " + d.ergebnis + " " + d.trick], "Schreibt ins Arbeitsblatt …", !alle);
   vertonen(["Tragt jetzt in euer Arbeitsblatt ein:", AB_FELD + ", Zeile " + s.nr + ".", alle ? "Alle fünf Seiten entdeckt!" : "Wartet auf das Signal.", alle ? FILO.wartenFertig : "Danach ist Station " + naechste + " dran.", (!alle && zg) ? "Noch Zeit? " + zg.t : null, alle ? null : NOCH_ZEIT_AB]);
 }
 
@@ -4251,11 +4398,22 @@ function zeigeSeite(){
     AKTION = () => klick("#weiter");
     return;
   }
+  /* Blaettern vor und zurueck zwischen den entdeckten Seiten (Rückmeldung 17.11.2026 abends: „damit auch nochmal etwas nachgeschaut
+     werden kann“) */
+  const folge = STATIONEN.map(x => x.nr).concat(["profi"]).filter(x => entdeckt(x)), pos = folge.indexOf(id);
+  const vorige = pos > 0 ? folge[pos - 1] : null, naechste = pos >= 0 && pos < folge.length - 1 ? folge[pos + 1] : null;
+  const seitenName = (x) => x === "profi" ? "Profi-Seite" : "Seite " + x;
+  /* in der Kopfzeile rechts: kostet keine Hoehe (unter dem Titel deckte der Fuss im Hochformat sonst den Kasten unten ab) */
+  const blaettern = (vorige != null || naechste != null) ? '<span class="blaettern">' +
+    (vorige != null ? '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="seiteZurueck" data-pruef="seite-zurueck" type="button">' + ic("zurueck") + esc(seitenName(vorige)) + '</button>' : '') +
+    (naechste != null ? '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="seiteVor" data-pruef="seite-vor" type="button">' + esc(seitenName(naechste)) + ic("weiter") + '</button>' : '') + '</span>' : '';
   buehne.innerHTML = '<section class="karte m-karte"><div class="m-karte-kopf"><span class="m-chip"><img src="' + IMG[s.icon] + '" alt="">' + (profi ? esc(PROFI.titel) : 'Seite ' + id + ' · ' + s.sinn) + '</span>' +
-    '<span class="m-chip m-chip--tuerkis">' + esc(gruppenName()) + '</span></div>' +
+    '<span class="m-chip m-chip--tuerkis">' + esc(gruppenName()) + '</span>' + blaettern + '</div>' +
     '<div class="inhalt"><h2 class="m-frage">' + (profi ? esc(PROFI.titel) : 'Seite ' + id + ': ' + s.sinn) + vorleseKnopf() + '</h2>' + seiteHTML(id) + '</div>' +
     fussHTML(FILO.seite, profi ? '' : '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="nochmalStation" type="button">' + ic("nochmal") + 'Station nochmal</button>', "Zum Forscherbuch", true) + '</section>';
   seiteBinden(id);
+  const sz = $("#seiteZurueck"); if(sz) sz.onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); seiteOeffnen(vorige); };
+  const sv = $("#seiteVor"); if(sv) sv.onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); seiteOeffnen(naechste); };
   $("#weiter").onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); geheZu("buch"); };
   const ns = $("#nochmalStation"); if(ns) ns.onclick = (ev) => { if(ev && ev.detail > 1) return; klang("klick"); zugabe(id); };
   AKTION = () => klick("#weiter");
@@ -4299,6 +4457,8 @@ function zeigeKomplett(){
 const BILDFOLGE = () => M.reduziert;
 function lesezeitMs(t){ const w = nurText(t).split(/\s+/).filter(Boolean).length; return Math.max(2600, Math.min(11000, 2000 + w * 600)); }
 function trickDauer(id){ return TRICK[id].saetze.reduce((a, t) => a + lesezeitMs(t), 0); }
+/* Bildfolge ohne Bewegung: „Weiter“ nach drei Vierteln der Lesezeit aller Bildtexte (Durchklick-Sperre) */
+function bildfolgeMs(id){ return Math.round(LESE_ANTEIL * leseMs(TRICK[id].saetze) * ZEIT); }
 function betont(t){ return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 const TRICK_GRUND = '<rect x="-1600" y="-1600" width="4000" height="3650" fill="#f7f0e2"/><ellipse cx="400" cy="430" rx="460" ry="56" fill="#ecdfc6"/>';
 function trickSVG(id, bis, stand){
@@ -4311,8 +4471,8 @@ function trickfilm(platz, id, o){
   if(BILDFOLGE()){
     platz.innerHTML = '<div class="trick" data-animation="' + id + '" data-dauer-ms="' + dauer + '" data-b="' + n + '"><div class="bildfolge" data-bildfolge="1">' +
       T.saetze.map((t, i) => '<figure data-bild="' + (i + 1) + '">' + trickSVG(id, i + 1, true) + '<figcaption><b>' + (i + 1) + '</b><span>' + betont(t) + '</span></figcaption></figure>').join("") + '</div></div>';
-    if(o.onEnde) setTimeout(o.onEnde, 0);
-    return { stopp(){} };
+    const bfTimer = o.onEnde ? setTimeout(o.onEnde, bildfolgeMs(id)) : null;
+    return { stopp(){ clearTimeout(bfTimer); } };
   }
   platz.innerHTML = '<div class="trick' + (o.kompakt ? ' kompakt' : '') + ' pausiert" data-animation="' + id + '" data-dauer-ms="' + dauer + '" data-b="0">' +
     '<div class="trick-buehne">' + trickSVG(id, 0) + '<button class="trick-gross" type="button" data-a="start" aria-label="Animation abspielen">' + ic("play") + '</button></div>' +
@@ -4331,10 +4491,11 @@ function trickfilm(platz, id, o){
   }
   function bild(k){
     b = k; klassen(k); ut.innerHTML = betont(T.saetze[k - 1]);
-    const d = lesezeitMs(T.saetze[k - 1]), meins = ++token, text = nurText(T.saetze[k - 1]);
+    /* ZEIT < 1 nur im Gate (Testschalter): kuerzere Bilder ohne Stimme */
+    const d = lesezeitMs(T.saetze[k - 1]) * ZEIT, meins = ++token, text = nurText(T.saetze[k - 1]);
     spurZeichnen(d);
     const weiter = () => { if(meins !== token || !laeuft) return; if(b >= n) ende(); else bild(b + 1); };
-    if(vorlesenAn() && M.stimmeDauer(text)){
+    if(ZEIT === 1 && vorlesenAn() && M.stimmeDauer(text)){
       const t0 = Date.now();
       M.sprich(text).then(() => { if(meins !== token) return; timer = setTimeout(weiter, Math.max(250, d * 0.75 - (Date.now() - t0))); });
     } else timer = setTimeout(weiter, d);
@@ -4495,7 +4656,7 @@ function zuordnung(body, o){
   let sperreBis = 0;
   function waehle(zEl){
     if(akt >= N) return;
-    if(Date.now() < sperreBis || nachFalschGesperrt()) return;
+    if(Date.now() < sperreBis || nachFalschGesperrt() || zEl.disabled) return;   /* graues Schild: auch nicht durch Ziehen */
     const it = items[akt];
     if(zEl.dataset.k === it.z){
       sperreBis = Date.now() + 400;
@@ -4507,9 +4668,8 @@ function zuordnung(body, o){
   }
   zielEls.forEach(zEl => zEl.onclick = (ev) => { if(ev && ev.detail > 1) return; waehle(zEl); });
   ZU_AKT = {
-    zeigeLoesung(){ while(akt < N){ const it = items[akt]; lege(it, zielEls.filter(e => e.dataset.k === it.z)[0]); akt++; if(o.richtig) o.richtig(null, akt); } zeigeKarte(); if(o.fertig) o.fertig(); },
     richtigesZiel(){ return akt < N ? '#' + body.id + ' .ziel[data-k="' + items[akt].z + '"]' : null; },
-    falschesZiel(){ if(akt >= N) return null; const f = zielEls.filter(e => e.dataset.k !== items[akt].z)[0]; return f ? '#' + body.id + ' .ziel[data-k="' + f.dataset.k + '"]' : null; },
+    falschesZiel(){ if(akt >= N) return null; const f = zielEls.filter(e => e.dataset.k !== items[akt].z && !e.disabled)[0]; return f ? '#' + body.id + ' .ziel[data-k="' + f.dataset.k + '"]' : null; },
     get akt(){ return akt; }
   };
   return ZU_AKT;
@@ -4540,15 +4700,15 @@ function satzbau(body, o){
   markiere();
   wb.forEach(b => b.onclick = (ev) => {
     if(akt >= lEls.length) return; if(ev && ev.detail > 1) return;
-    if(nachFalschGesperrt()) return;
+    if(nachFalschGesperrt() || b.disabled) return;
     const w = woerter[+b.dataset.n];
     if(erlaubt(akt).indexOf(w) >= 0){ M.richtig(lEls[akt], { klang:true }); setze(w, b); if(o.richtig) o.richtig(); }
-    else { falschSperren(); M.falsch(b); marke(b, "Passt hier nicht", "falsch"); if(o.falsch) o.falsch(); }
+    else { falschSperren(); M.falsch(b); marke(b, "Passt hier nicht", "falsch"); if(o.falsch) o.falsch(b, w); }
   });
   return {
-    zeigeLoesung(){ while(akt < lEls.length){ const w = erlaubt(akt)[0]; const b = wb.filter(x => woerter[+x.dataset.n] === w && !x.disabled)[0]; setze(w, b); } },
     richtigesWort(){ if(akt >= lEls.length) return null; const w = erlaubt(akt)[0]; const kand = wb.filter(x => woerter[+x.dataset.n] === w && !x.disabled)[0]; return kand ? '#' + body.id + ' .wort[data-n="' + kand.dataset.n + '"]' : null; },
-    get fertig(){ return akt >= lEls.length; }
+    get fertig(){ return akt >= lEls.length; },
+    get akt(){ return akt; }
   };
 }
 
@@ -4577,6 +4737,8 @@ function zeigeProfi(){
   besucht("profi");
   const sp = S.sp = S.sp || { schritt:1 }, n = sp.schritt, T = sprinterTexte(n), SPR = SPRINTER;
   sp.werte = sp.werte || {}; sp.rang = sp.rang || [];
+  if(!sp.weit || n > sp.weit) sp.weit = n;
+  NACHSCHAU = n < sp.weit;
   let body = "", bereit = true, weiterText = n < 7 ? "Weiter" : n === 7 ? "Zur Animation" : n === 8 ? "Weiter" : "Forscherbuch komplett";
   if(n === 1){
     body = '<div class="spalten">' + profiBild(false) + '<div>' +
@@ -4599,9 +4761,10 @@ function zeigeProfi(){
       '<p class="leise">Tippe auf + oder −. Schritte: ein halber Zentimeter.</p>' + profiBild(true);
   } else if(n === 5){
     bereit = sp.rangOk === true;
+    /* jeder Platz wird gleich geprueft: eine falsche Stelle wird fuer diesen Platz grau (kein „Nochmal nummerieren“ noetig) */
     body = '<div class="tipps versteckt" id="tipps"></div><div class="rang" id="spRang">' + SPR.stellen.map(k => { const p = sp.rang.indexOf(k);
       return '<button class="kachel' + (p >= 0 ? ' gesetzt' : '') + '" type="button" data-r="' + k + '"><span class="platz">' + (p >= 0 ? p + 1 : '') + '</span>' + k + '<small>' + spWert(sp.werte[k]) + '</small></button>'; }).join("") + '</div>' +
-      '<div class="knopfreihe"><button class="m-knopf m-knopf--zweit m-knopf--klein" id="rangNeu" type="button">' + ic("nochmal") + 'Nochmal nummerieren</button></div><div class="rueck" id="rueck"></div><div id="gutbox"></div>' + profiBild(true);
+      '<div class="rueck" id="rueck"></div><div id="gutbox"></div>' + profiBild(true);
   } else if(n === 6){
     bereit = !!sp.satzFertig;
     body = '<div class="tipps versteckt" id="tipps"></div><div id="spSatz"></div><div class="rueck" id="rueck"></div><div id="gutbox"></div>' + profiBild(true);
@@ -4621,13 +4784,16 @@ function zeigeProfi(){
   }
   const titel = n === 1 ? "Wo tastet deine Haut am genauesten?" : n === 8 ? "So funktioniert es: Zwei-Punkt-Probe" : n === 9 ? "Profi-Seite entdeckt!" : T.erz[0];
   buehne.innerHTML = '<section class="karte m-karte">' +
-    '<div class="m-karte-kopf"><span class="m-chip sprinterchip">' + ic("stern") + 'Profi ★★★ · Die Zwei-Punkt-Probe</span><span class="m-chip m-chip--tuerkis">' + SP_SCHRITT[n] + '</span><span class="m-schritt">Schritt ' + n + ' von ' + SP_ZAHL + '</span></div>' +
+    '<div class="m-karte-kopf"><span class="m-chip sprinterchip">' + ic("stern") + 'Profi ★★★ · Die Zwei-Punkt-Probe</span><span class="m-chip m-chip--tuerkis">' + SP_SCHRITT[n] + '</span><span class="m-schritt">Schritt ' + n + ' von ' + SP_ZAHL + (NACHSCHAU ? ' · Nachschauen' : '') + '</span></div>' +
     '<div class="inhalt"><h2 class="m-frage">' + esc(titel) + (n === 8 ? '' : vorleseKnopf()) + '</h2>' + body + '</div>' +
     fussHTML(n === 8 ? null : T.filo, zumBuchKnopf() +
-      (n === 5 || n === 6 ? '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="tippKnopf" type="button">' + ic("tipp") + 'Tipp</button><button class="m-knopf m-knopf--orange m-knopf--klein versteckt" id="loesung" type="button">' + ic("tipp") + 'Lösung zeigen</button>' : '') +
-      (n === 8 ? '<button class="m-knopf m-knopf--zweit m-knopf--klein' + (sp.animGesehen ? ' versteckt' : '') + '" id="tfSkip" type="button">' + ic("springen") + 'Überspringen</button>' : ''),
+      (n === 5 || n === 6 ? '<button class="m-knopf m-knopf--zweit m-knopf--klein" id="tippKnopf" type="button">' + ic("tipp") + 'Tipp</button>' : ''),
       weiterText, bereit) + '</section>';
   zumBuchBinden();
+  zurueckSetzen(n > 1, () => { sp.schritt = n - 1; speichern(); zeige(); });
+  /* Lese-Schritte der Profi-Seite (Auftrag, Anleitung, Vergleich, Seite): „Weiter“ erst nach drei Vierteln der Lesezeit */
+  const leseText = { 1:"Lest den Auftrag …", 3:"Lest die Anleitung …", 7:"Lest den Vergleich …", 9:"Lest die Seite …" }[n];
+  if(leseText) leseSperre("profi" + n, T.erz, leseText);
   let weg = false;
   $("#weiter").onclick = (ev) => {
     if(ev && ev.detail > 1) return; if($("#weiter").disabled || weg) return; klang("klick");
@@ -4665,53 +4831,66 @@ function zeigeProfi(){
       return klick("#weiter");
     };
   } else if(n === 5){
-    const hr = hilfeRahmen("sp3a", SPR.rangTipps, { tipps:$("#tipps"), loesung:$("#loesung"), tipp:$("#tippKnopf"), geloest:() => sp.rangOk === true });
-    const sortiert = () => SPR.stellen.slice().sort((x, y) => spZahl(sp.werte[x] || { cm:99 }) - spZahl(sp.werte[y] || { cm:99 }));
-    function zeichnen(){ $$("#spRang .kachel").forEach(b => { const p = sp.rang.indexOf(b.dataset.r); b.classList.toggle("gesetzt", p >= 0); $(".platz", b).textContent = p >= 0 ? p + 1 : ""; }); }
-    function pruefen(){
-      if(sp.rang.length < 3) return;
-      const sor = sortiert();
-      const ok = sp.rang.every((k, i) => Math.abs(spZahl(sp.werte[k] || { cm:99 }) - spZahl(sp.werte[sor[i]] || { cm:99 })) < 0.001);
-      if(ok){
-        sp.rangOk = true; speichern(); klang("ok"); hr.zeigen(); filoSag($("#beg"), zufall(LOB));
-        const fs = sp.rang[0] === "Fingerspitze";
-        $("#gutbox").innerHTML = '<div class="gut">' + ic("haken") + '<div><span class="gutkopf">Richtig nummeriert!</span>' + (fs ? 'Platz 1 hat die Fingerspitze.' : 'Bei den meisten hat die Fingerspitze Platz 1. Miss dort noch einmal nach.') + '</div></div>';
-        $("#rueck").textContent = ""; weiterBereit();
-      } else { falschSperren(); hr.falsch(); $("#rueck").className = "rueck falsch"; $("#rueck").textContent = "Das passt nicht zu deinen Zahlen. Lies den Tipp."; filoSag($("#beg"), zufall(HMM)); sp.rang = []; speichern(); setTimeout(zeichnen, 700); }
+    const wertVon = (k) => spZahl(sp.werte[k] || { cm:99 });
+    const offenStellen = () => SPR.stellen.filter(x => sp.rang.indexOf(x) < 0);
+    const hr = hilfeRahmen("sp3a", SPR.rangTipps, { tipps:$("#tipps"), tipp:$("#tippKnopf"), rueck:$("#rueck"), geloest:() => sp.rangOk === true,
+      optionen:() => $$("#spRang .kachel").filter(b => sp.rang.indexOf(b.dataset.r) < 0), wert:b => b.dataset.r, teil:() => sp.rang.length });
+    /* gesetzte Stellen sind fertig (nicht mehr waehlbar), behalten aber ihre Farbe */
+    function zeichnen(){ $$("#spRang .kachel").forEach(b => { const p = sp.rang.indexOf(b.dataset.r); b.classList.toggle("gesetzt", p >= 0); if(p >= 0) b.disabled = true; $(".platz", b).textContent = p >= 0 ? p + 1 : ""; }); }
+    function fertig5(){
+      sp.rangOk = true; speichern(); klang("ok"); hr.zeigen(); filoSag($("#beg"), zufall(LOB));
+      const fs = sp.rang[0] === "Fingerspitze";
+      $("#gutbox").innerHTML = '<div class="gut">' + ic("haken") + '<div><span class="gutkopf">Richtig nummeriert!</span>' + (fs ? 'Platz 1 hat die Fingerspitze.' : 'Bei den meisten hat die Fingerspitze Platz 1. Miss dort noch einmal nach.') + '</div></div>';
+      $("#rueck").textContent = ""; weiterBereit();
     }
-    $$("#spRang .kachel").forEach(b => b.onclick = () => { if(sp.rangOk) return; if(nachFalschGesperrt()) return; if(sp.rang.indexOf(b.dataset.r) >= 0) return; sp.rang.push(b.dataset.r); speichern(); klang("klick"); zeichnen(); pruefen(); });
-    $("#rangNeu").onclick = () => { if(sp.rangOk) return; sp.rang = []; speichern(); zeichnen(); };
-    $("#loesung").onclick = () => { if(sp.rangOk) return; ts("sp3a").loesung = true; sp.rang = sortiert(); zeichnen(); pruefen(); };
+    $$("#spRang .kachel").forEach(b => b.onclick = (ev) => {
+      if(sp.rangOk) return; if(ev && ev.detail > 1) return;
+      if(nachFalschGesperrt() || b.disabled) return;
+      const k = b.dataset.r; if(sp.rang.indexOf(k) >= 0) return;
+      const kleinst = Math.min.apply(null, offenStellen().map(wertVon));
+      if(Math.abs(wertVon(k) - kleinst) < 0.001){
+        sp.rang.push(k); hr.richtig(); speichern(); klang("klick"); zeichnen();
+        if(sp.rang.length >= SPR.stellen.length) fertig5();
+        else { $("#rueck").className = "rueck ok"; $("#rueck").textContent = "Richtig! Platz " + sp.rang.length + ": " + k + "."; }
+      } else { M.falsch(b); marke(b, "Noch nicht", "falsch"); hr.falsch(b, k); filoSag($("#beg"), zufall(HMM)); }
+    });
+    zeichnen();
     if(sp.rangOk) $("#gutbox").innerHTML = '<div class="gut">' + ic("haken") + '<div><span class="gutkopf">Richtig nummeriert!</span></div></div>';
-    AKTION = () => { if(sp.rangOk) return klick("#weiter"); const sor = sortiert(); return klick('#spRang .kachel[data-r="' + sor[sp.rang.length] + '"]'); };
+    AKTION = () => { if(sp.rangOk) return klick("#weiter"); const sor = offenStellen().sort((x, y) => wertVon(x) - wertVon(y)); return klick('#spRang .kachel[data-r="' + sor[0] + '"]'); };
   } else if(n === 6){
-    const hr = hilfeRahmen("sp3b", SPR.satz.tipps, { tipps:$("#tipps"), loesung:$("#loesung"), tipp:$("#tippKnopf"), geloest:() => !!sp.satzFertig });
-    if(sp.satzFertig){ $("#spSatz").innerHTML = '<div class="satz">' + esc(sp.satzFertig) + '</div>'; AKTION = () => klick("#weiter"); }
-    else {
-      const sb = satzbau($("#spSatz"), { text:SPR.satz.text, gruppen:SPR.satz.gruppen, woerter:SPR.satz.woerter,
-        falsch:() => { hr.falsch(); $("#rueck").className = "rueck falsch"; $("#rueck").textContent = "Passt hier nicht. Lies den Tipp."; filoSag($("#beg"), zufall(HMM)); },
-        fertig:(w) => { sp.satzFertig = "Die " + w[0] + " hat mehr " + w[1] + " als der " + w[2] + "."; speichern(); hr.zeigen(); $("#rueck").textContent = "";
+    let sb = null;
+    /* fertiger Satz mit den gewaehlten Woertern in den Luecken (auch beim Nachschauen) */
+    if(sp.satzFertig){
+      const w = sp.satzWoerter || [];
+      let i = 0;
+      $("#spSatz").innerHTML = '<div class="satz">' + (w.length ? esc(SPR.satz.text).replace(/\{([A-Z0-9]+)\}/g, () => '<span class="luecke voll">' + esc(w[i++] || "") + '</span>') : esc(sp.satzFertig)) + '</div>';
+      AKTION = () => klick("#weiter");
+    } else {
+      sb = satzbau($("#spSatz"), { text:SPR.satz.text, gruppen:SPR.satz.gruppen, woerter:SPR.satz.woerter,
+        richtig:() => { hr.richtig(); },
+        falsch:(b, w) => { hr.falsch(b, w); filoSag($("#beg"), zufall(HMM)); },
+        fertig:(w) => { sp.satzWoerter = w.slice(); sp.satzFertig = "Die " + w[0] + " hat mehr " + w[1] + " als der " + w[2] + "."; speichern(); hr.zeigen(); $("#rueck").textContent = "";
           $("#gutbox").innerHTML = '<div class="gut">' + ic("haken") + '<div><span class="gutkopf">Gut begründet!</span>' + esc(SPRINTER.merke) + '</div></div>'; filoSag($("#beg"), zufall(LOB)); weiterBereit(); } });
-      $("#loesung").onclick = () => { if(sp.satzFertig) return; ts("sp3b").loesung = true; sb.zeigeLoesung(); };
       AKTION = () => sp.satzFertig ? klick("#weiter") : klick(sb.richtigesWort());
     }
+    /* graue Woerter gelten fuer die Luecke, die gerade dran ist */
+    const hr = hilfeRahmen("sp3b", SPR.satz.tipps, { tipps:$("#tipps"), tipp:$("#tippKnopf"), rueck:$("#rueck"), geloest:() => !!sp.satzFertig,
+      optionen:() => $$("#spSatz .wort"), wert:b => b.getAttribute("data-w"), teil:() => sb ? sb.akt : 0 });
   } else if(n === 8){
-    const gesehen = () => { sp.animGesehen = true; speichern(); weiterBereit(); const k = $("#tfSkip"); if(k) k.classList.add("versteckt"); };
+    /* kein „Ueberspringen“ beim ersten Ansehen: „Weiter“ erst am Ende der Animation (Durchklick-Sperre) */
+    const bf = BILDFOLGE();
+    const frei = filmSperre(!!sp.animGesehen, bf ? "Lest die Bilder …" : "Seht die Animation an …", bf ? bildfolgeMs("profi") : 0);
+    const gesehen = () => { sp.animGesehen = true; speichern(); frei(); };
     const tf = trickfilm($("#trickPlatz"), "profi", { autostart:true, onEnde:gesehen });
     aufraeumen.push(() => tf.stopp());
-    let offen = false;
-    $("#tfSkip").onclick = (ev) => {
-      if(ev && ev.detail > 1) return; if(offen) return; offen = true;
-      frageDialog({ titel:"Animation überspringen?", text:"Filo zeigt euch, wie es funktioniert. Wirklich weiter?", nein:"Nein, ansehen", ja:"Ja, überspringen" })
-        .then(ja => { offen = false; if(ja){ tf.stopp(); gesehen(); } });
-    };
-    AKTION = () => { if($(".dlg")) return klick('.dlg [data-a="ja"]'); if(!sp.animGesehen) return klick("#tfSkip"); return klick("#weiter"); };
+    AKTION = () => sp.animGesehen ? klick("#weiter") : { art:"warte" };
   } else if(n === 9){
     seiteBinden("profi");
     AKTION = () => klick("#weiter");
   } else {
     AKTION = () => klick("#weiter");
   }
+  if(NACHSCHAU) nachschauen();
   if(n !== 8) vertonen(T.erz.concat([T.filo]));
 }
 
@@ -4770,7 +4949,7 @@ function beispielStand(){
   S.gruppe = S.gruppe || "eule"; S.start = S.start || 1; S.film = true;
   STATIONEN.forEach(s => { S.st[s.nr] = { schritt:7, teil:1, fertig:true, verm:0, erg:s.seite.beispiel, trick:s.nr === 1 ? "ja" : "nein", animGesehen:true, seiteGezeigt:true }; });
   S.sp = { schritt:9, werte:{ "Oberarm":{ cm:5, unter:false }, "Fingerspitze":{ cm:1, unter:true }, "Unterarm":{ cm:3.5, unter:false } }, rang:["Fingerspitze", "Unterarm", "Oberarm"], rangOk:true,
-    satzFertig:"Die Fingerspitze hat mehr Tast-Stellen als der Oberarm.", verm:"Fingerspitze", weil:SPRINTER.weil[0], animGesehen:true, seiteGezeigt:true };
+    satzFertig:"Die Fingerspitze hat mehr Tast-Stellen als der Oberarm.", satzWoerter:["Fingerspitze", "Tast-Stellen", "Oberarm"], verm:"Fingerspitze", weil:SPRINTER.weil[0], animGesehen:true, seiteGezeigt:true };
   S.spFertig = true; S.zuletzt = 5; speichern();
 }
 
@@ -4785,7 +4964,8 @@ function pruefStation(nr, schritt, teil, p, extra){
 function pruefProfi(n){
   S = neuerZustand(); S.gruppe = "eule"; S.start = 1; S.film = true;
   beispielStand(); S.spFertig = n > 7; S.sp.schritt = n; S.sp.animGesehen = false; S.sp.seiteGezeigt = false;
-  if(n <= 6){ S.sp.satzFertig = null; S.sp.rangOk = n > 5; }
+  if(n <= 6){ S.sp.satzFertig = null; S.sp.satzWoerter = null; S.sp.rangOk = n > 5; }
+  if(n <= 5) S.sp.rang = [];
   S.phase = "profi"; zeige();
 }
 function mitte(el){ const r = el.getBoundingClientRect(); return { x:r.left + r.width / 2, y:r.top + r.height / 2 }; }
@@ -4807,20 +4987,26 @@ window.PRUEF = {
   ],
   /* Doppeltipp-Probe: diese Knoepfe tippt das Gate im Tablet-Browser zweimal; hoechstens ein Bildschirmwechsel (zustand().wechsel) */
   doppeltipp:["#weiter"],
-  /* Hilfen-Probe: drei Tipps ohne Versuch zeigen keine Loesung; nach einer Hilfe und zwei Fehlversuchen kommt sie */
+  /* Sperr-Probe (Forscherbuch, Durchklick-Sperre): je Frage mit richtiger Antwort; id = Schluessel der Tipp-Leiter (hilfeStand),
+     richtig = naechste(), falsch = erste freie andere Moeglichkeit (das Gate sucht sie selbst) */
   hilfeProben:[
-    { name:"Station 1 (Sinnesorgan)", oeffnen(){ pruefStation(1, 4, 1, null, { erg:"gleich lang", trick:"ja" }); }, vorher:[], tipp:"#tippKnopf", loesung:"#loesung", falsch:'#organWahl .kachel[data-organ="Nase"]' },
-    { name:"Station 4 (Bildkarten)", oeffnen(){ pruefStation(4, 3, 2, { lupe:true, karten:0 }); }, vorher:[], tipp:"#tippKnopf", loesung:"#loesung", falsch(){ return ZU_AKT ? ZU_AKT.falschesZiel() : null; } },
-    { name:"Profi (Satz)", oeffnen(){ pruefProfi(6); }, vorher:[], tipp:"#tippKnopf", loesung:"#loesung", falsch:'#spSatz .wort[data-w="Haut"]' }
+    { name:"Station 1 (Ergebnis)", id:"s1erg", oeffnen(){ pruefStation(1, 4, 1, null, {}); }, vorher:[], tipp:null },
+    { name:"Station 1 (Sinnesorgan)", id:"s1organ", oeffnen(){ pruefStation(1, 4, 1, null, { erg:"gleich lang", trick:"ja" }); }, vorher:[], tipp:"#tippKnopf" },
+    { name:"Station 4 (Bildkarten)", id:"s4karten", oeffnen(){ pruefStation(4, 3, 2, { lupe:true, karten:0 }); }, vorher:[], tipp:"#tippKnopf" },
+    { name:"Profi (Platz)", id:"sp3a", oeffnen(){ pruefProfi(5); }, vorher:[], tipp:"#tippKnopf" },
+    { name:"Profi (Satz)", id:"sp3b", oeffnen(){ pruefProfi(6); }, vorher:[], tipp:"#tippKnopf" }
   ],
-  /* Doppeltipp auf eine falsche Antwort (Tablet-Browser, zwei Tipps in 140 ms): danach darf „Loesung zeigen“ nicht sichtbar sein */
+  /* Doppeltipp auf eine falsche Antwort (Tablet-Browser, zwei Tipps in 140 ms): zaehlt einen Versuch (hilfeStand(id).fehler) */
   doppelFalsch:[
-    { name:"Station 1 (Sinnesorgan)", oeffnen(){ pruefStation(1, 4, 1, null, { erg:"gleich lang", trick:"ja" }); }, falsch:'#organWahl .kachel[data-organ="Nase"]', loesung:"#loesung" },
-    { name:"Station 1 (Ergebnis)", oeffnen(){ pruefStation(1, 4, 1, null, {}); }, falsch:'#ergWahl .kachel[data-erg="oben länger"]', loesung:"#ergLoesung" },
-    { name:"Station 4 (Ergebnis)", oeffnen(){ pruefStation(4, 4, 1, { lupe:true, karten:4 }, {}); }, falsch:'#ergWahl .kachel[data-erg="ganz glatt"]', loesung:"#ergLoesung" },
-    { name:"Station 4 (Bildkarten)", oeffnen(){ pruefStation(4, 3, 2, { lupe:true, karten:0 }); }, falsch(){ return ZU_AKT ? ZU_AKT.falschesZiel() : null; }, loesung:"#loesung" },
-    { name:"Profi (Satz)", oeffnen(){ pruefProfi(6); }, falsch:'#spSatz .wort[data-w="Haut"]', loesung:"#loesung" }
+    { name:"Station 1 (Sinnesorgan)", id:"s1organ", oeffnen(){ pruefStation(1, 4, 1, null, { erg:"gleich lang", trick:"ja" }); } },
+    { name:"Station 1 (Ergebnis)", id:"s1erg", oeffnen(){ pruefStation(1, 4, 1, null, {}); } },
+    { name:"Station 4 (Ergebnis)", id:"s4erg", oeffnen(){ pruefStation(4, 4, 1, { lupe:true, karten:4 }, {}); } },
+    { name:"Station 4 (Bildkarten)", id:"s4karten", oeffnen(){ pruefStation(4, 3, 2, { lupe:true, karten:0 }); } },
+    { name:"Profi (Satz)", id:"sp3b", oeffnen(){ pruefProfi(6); } }
   ],
+  hilfeStand(id){ return JSON.parse(JSON.stringify(ts(id))); },
+  /* Vor und zurueck: Knopf „Zurueck“ ab Schritt 2 in Station und Profi-Seite; „Weiter“ ist der Vor-Knopf */
+  zurueck:'[data-pruef="zurueck"]',
   /* Zieh-Probe: das Gate zieht mit dem Finger (Touch) und mit der Maus; danach muss wirkung() wahr sein */
   ziehen:[
     { name:"Lineal an Station 1", oeffnen(){ pruefStation(1, 3, 1, { oben:false, unten:false, ohne:false }); },
@@ -4838,13 +5024,28 @@ window.PRUEF = {
     if(ov) return klick(".m-overlay:not(.dlg):not(.ist-zu) .m-preis-karte .m-knopf");
     if(document.querySelector(".m-overlay.ist-zu")) return { art:"warte" };
     if(Date.now() < SPERRE) return { art:"warte" };   /* Doppeltipp-Sperre nach dem Bildschirmwechsel */
-    return AKTION ? AKTION() : null;
+    const a = AKTION ? AKTION() : null;
+    /* „Weiter“ noch gesperrt (Lese- oder Filmzeit): warten */
+    if(a && a.art === "klick" && a.sel === "#weiter"){ const w = $("#weiter"); if(w && w.disabled) return { art:"warte" }; }
+    return a;
   },
   zustand(){
     const inSt = S.phase === "station", z = inSt && S.aktSt ? stz(S.aktSt) : null;
     /* stand: Pruefsumme des Spielstands, damit das Gate echte Wirkung von einer Sackgasse unterscheidet; wechsel: Bildschirmwechsel */
-    let h = 0; const t = JSON.stringify(S); for(let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;
-    return { phase:S.phase, station:inSt ? S.aktSt : 0, schritt:z ? z.schritt : 0, teil:z ? z.teil : 0, sprinter:S.phase === "profi" ? S.sp.schritt : 0, stand:h, wechsel:WECHSEL, besucht:BESUCHT.slice() };
+    const summe = (t) => { let h = 0; for(let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return h; };
+    /* daten: Spielstand ohne die Stelle, an der die Gruppe gerade ist (Vor und zurueck darf ihn nicht aendern) */
+    const d = JSON.parse(JSON.stringify(S));
+    ["phase", "seite", "aktSt", "hier", "gelesen"].forEach(k => { delete d[k]; });
+    Object.keys(d.st || {}).forEach(k => { delete d.st[k].schritt; delete d.st[k].teil; delete d.st[k].weit; });
+    if(d.sp){ delete d.sp.schritt; delete d.sp.weit; }
+    /* eintrag: was als gefuellter Eintrag zaehlt (entdeckte Seiten, Profi, geloeste Fragen mit richtiger Antwort) */
+    const sp = S.sp || {};
+    const eintrag = STATIONEN.map(s => entdeckt(s.nr) ? s.nr : "-").join("") + "|" + (S.spFertig ? "P" : "-") + "|" +
+      STATIONEN.map(s => s.eintragen.richtig && S.st[s.nr] && S.st[s.nr].erg != null ? "E" + s.nr : "").join("") + "|" +
+      ((S.st[4] && S.st[4].p && S.st[4].p.karten) || 0) + "|" + (sp.rang ? sp.rang.length : 0) + (sp.rangOk ? "R" : "") + (sp.satzFertig ? "S" : "");
+    return { phase:S.phase, station:inSt ? S.aktSt : 0, schritt:z ? z.schritt : 0, teil:z ? z.teil : 0, sprinter:S.phase === "profi" ? S.sp.schritt : 0, stand:summe(JSON.stringify(S)), wechsel:WECHSEL, besucht:BESUCHT.slice(),
+      lese:LESE ? LESE.art : null, leseMs:LESE ? LESE.ms : 0, nachschau:NACHSCHAU, weit:z ? (z.weit || 0) : (S.phase === "profi" ? (S.sp.weit || 0) : 0),
+      daten:summe(JSON.stringify(d)), eintrag:eintrag, versuche:VERSUCHE, zeitfaktor:ZEIT };
   },
   fertig(){ return S.phase === "komplett" && !!S.spFertig; },
   /* Forscherbuch: Eintraege, Seiten, Animationen und die Angaben fuer das Arbeitsblatt */
